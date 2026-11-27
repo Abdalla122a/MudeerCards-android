@@ -19,32 +19,11 @@ jobs:
           cp colors.xml $S/res/values/
           cp ic_fg.xml $S/res/drawable/
           cp ic_launcher.xml $S/res/mipmap-anydpi/
-          cat > proj/settings.gradle <<'EOF'
-          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-          dependencyResolutionManagement { repositories { google(); mavenCentral() } }
-          rootProject.name = "MudeerCards"
-          include ':app'
-          EOF
-          cat > proj/build.gradle <<'EOF'
-          plugins { id 'com.android.application' version '8.5.2' apply false }
-          EOF
-          cat > proj/gradle.properties <<'EOF'
-          org.gradle.jvmargs=-Xmx2g
-          android.useAndroidX=false
-          EOF
-          cat > proj/app/build.gradle <<'EOF'
-          plugins { id 'com.android.application' }
-          android {
-              namespace 'com.mudeer.cards'
-              compileSdk 34
-              defaultConfig {
-                  applicationId 'com.mudeer.cards'
-                  minSdk 29
-                  targetSdk 34
-                  versionCode 1
-                  versionName '1.0'
-              }
-              compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17
+          printf '%s\n' "pluginManagement {" "  repositories {" "    google()" "    mavenCentral()" "    gradlePluginPortal()" "  }" "}" "dependencyResolutionManagement {" "  repositories {" "    google()" "    mavenCentral()" "  }" "}" "rootProject.name = 'MudeerCards'" "include ':app'" > proj/settings.gradle
+          printf '%s\n' "plugins {" "  id 'com.android.application' version '8.5.2' apply false" "}" > proj/build.gradle
+          printf '%s\n' "org.gradle.jvmargs=-Xmx2g" "android.useAndroidX=false" > proj/gradle.properties
+          printf '%s\n' "plugins {" "  id 'com.android.application'" "}" "" "android {" "  namespace 'com.mudeer.cards'" "  compileSdk 34" "  defaultConfig {" "    applicationId 'com.mudeer.cards'" "    minSdk 29" "    targetSdk 34" "    versionCode 1" "    versionName '1.0'" "  }" "  compileOptions {" "    sourceCompatibility JavaVersion.VERSION_17" "    targetCompatibility JavaVersion.VERSION_17" "  }" "}" > proj/app/build.gradle
+          cat -A proj/app/build.gradle
       - name: Build
         working-directory: proj
         run: gradle assembleDebug
