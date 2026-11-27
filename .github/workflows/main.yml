@@ -24,64 +24,87 @@ jobs:
           mkdir -p app/src/main/java/com/example/mudeercards \
                    app/src/main/res/values \
                    app/src/main/res/mipmap-anydpi-v26 \
-                   app/src/main/res/mipmap-hdpi \
-                   app/src/main/res/mipmap-mdpi \
-                   app/src/main/res/mipmap-xhdpi \
-                   app/src/main/res/mipmap-xxhdpi \
-                   app/src/main/res/mipmap-xxxhdpi \
                    app/src/main/assets
 
-          # نقل ملفات الواجهة إلى مجلد assets
           [ -f "index.html" ] && cp "index.html" "app/src/main/assets/index.html"
           [ -f "pdf.min.js" ] && cp "pdf.min.js" "app/src/main/assets/pdf.min.js"
           [ -f "pdf.worker.min.js" ] && cp "pdf.worker.min.js" "app/src/main/assets/pdf.worker.min.js"
 
-          # نقل AndroidManifest.xml و MainActivity.java إذا كانا في الجذر
           [ -f "AndroidManifest.xml" ] && cp "AndroidManifest.xml" "app/src/main/AndroidManifest.xml"
           if [ -f "MainActivity.java" ]; then
             grep -q "^package " "MainActivity.java" || sed -i '1s/^/package com.example.mudeercards;\n/' "MainActivity.java"
             cp "MainActivity.java" "app/src/main/java/com/example/mudeercards/MainActivity.java"
           fi
 
-          # نقل ملفات الموارد إن وُجدت أو إنشاء ملفات افتراضية سليمة
           if [ -f "colors.xml" ]; then
             cp "colors.xml" "app/src/main/res/values/colors.xml"
           else
             cat << 'EOF' > app/src/main/res/values/colors.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <color name="ic_launcher_background">#1E88E5</color>
-          </resources>
-          EOF
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#1E88E5</color>
+</resources>
+EOF
           fi
 
           cat << 'EOF' > app/src/main/res/values/strings.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <string name="app_name">إدارة كروت الشبكة</string>
-          </resources>
-          EOF
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">إدارة كروت الشبكة</string>
+</resources>
+EOF
 
-          # إنشاء أيقونة ic_launcher و ic_launcher_round تلقائياً لضمان عدم فشل AAPT
           cat << 'EOF' > app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-              <background android:drawable="@android:color/holo_blue_dark"/>
-              <foreground android:drawable="@android:drawable/sym_def_app_icon"/>
-          </adaptive-icon>
-          EOF
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@android:color/holo_blue_dark"/>
+    <foreground android:drawable="@android:drawable/sym_def_app_icon"/>
+</adaptive-icon>
+EOF
 
           cp app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
 
-          # كتابة settings.gradle و build.gradle الجذري و app/build.gradle بشكل صحيح
           cat << 'EOF' > settings.gradle
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositories
-              
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "MudeerCards"
+include ':app'
+EOF
+
+          cat << 'EOF' > build.gradle
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}
+EOF
+
+          cat << 'EOF' > app/build.gradle
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.mudeercards'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.mudeercards"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+
+    
