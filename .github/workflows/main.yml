@@ -19,32 +19,22 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Prepare Android project structure
         run: |
           mkdir -p app/src/main/java/com/example/mudeercards app/src/main/res/values app/src/main/assets
 
-          # نقل ملفات الواجهة إلى مجلد assets
           [ -f "index.html" ] && cp "index.html" "app/src/main/assets/index.html"
           [ -f "pdf.min.js" ] && cp "pdf.min.js" "app/src/main/assets/pdf.min.js"
           [ -f "pdf.worker.min.js" ] && cp "pdf.worker.min.js" "app/src/main/assets/pdf.worker.min.js"
 
-          # نقل AndroidManifest.xml و MainActivity.java إذا كانا في الجذر
           [ -f "AndroidManifest.xml" ] && cp "AndroidManifest.xml" "app/src/main/AndroidManifest.xml"
           if [ -f "MainActivity.java" ]; then
-            sed -i '1i package com.example.mudeercards;' "MainActivity.java" 2>/dev/null || true
             grep -q "^package " "MainActivity.java" || sed -i '1s/^/package com.example.mudeercards;\n/' "MainActivity.java"
             cp "MainActivity.java" "app/src/main/java/com/example/mudeercards/MainActivity.java"
           fi
 
-          # ضبط ملفات الموارد إذا وُجدت في الجذر
           [ -f "colors.xml" ] && cp "colors.xml" "app/src/main/res/values/colors.xml"
-          [ -f "ic_fg.xml" ] && cp "ic_fg.xml" "app/src/main/res/drawable/ic_fg.xml" || true
-          [ -f "ic_launcher.xml" ] && cp "ic_launcher.xml" "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" || true
 
-          # كتابة settings.gradle و build.gradle الجذري و app/build.gradle بشكل صحيح
           cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
@@ -109,7 +99,14 @@ jobs:
           android.useAndroidX=true
           EOF
 
+          if [ -d "/usr/local/lib/android/sdk" ]; then
+            echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
+          fi
+
       - name: Build APK
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           if [ ! -f "./gradlew" ]; then
             gradle wrapper --gradle-version 8.7
@@ -122,4 +119,3 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
- 
