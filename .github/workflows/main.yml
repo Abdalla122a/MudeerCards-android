@@ -19,42 +19,107 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Assemble project
+      - name: Prepare Android project structure
         run: |
-          ROOT_DIR="$GITHUB_WORKSPACE"
-          ASSETS_DIR="$ROOT_DIR/app/src/main/assets"
-          mkdir -p "$ASSETS_DIR"
+          mkdir -p app/src/main/java/com/example/mudeercards app/src/main/res/values app/src/main/assets
 
-          if [ -f "$ROOT_DIR/index.html" ]; then
-            cp "$ROOT_DIR/index.html" "$ASSETS_DIR/index.html"
-          elif [ -f "$ROOT_DIR/app/src/main/index.html" ]; then
-            cp "$ROOT_DIR/app/src/main/index.html" "$ASSETS_DIR/index.html"
-          else
-            echo "Error: index.html not found!"
-            exit 1
+          # نقل ملفات الواجهة إلى مجلد assets
+          [ -f "index.html" ] && cp "index.html" "app/src/main/assets/index.html"
+          [ -f "pdf.min.js" ] && cp "pdf.min.js" "app/src/main/assets/pdf.min.js"
+          [ -f "pdf.worker.min.js" ] && cp "pdf.worker.min.js" "app/src/main/assets/pdf.worker.min.js"
+
+          # نقل AndroidManifest.xml و MainActivity.java إذا كانا في الجذر
+          [ -f "AndroidManifest.xml" ] && cp "AndroidManifest.xml" "app/src/main/AndroidManifest.xml"
+          if [ -f "MainActivity.java" ]; then
+            sed -i '1i package com.example.mudeercards;' "MainActivity.java" 2>/dev/null || true
+            grep -q "^package " "MainActivity.java" || sed -i '1s/^/package com.example.mudeercards;\n/' "MainActivity.java"
+            cp "MainActivity.java" "app/src/main/java/com/example/mudeercards/MainActivity.java"
           fi
 
-          [ -f "$ROOT_DIR/pdf.min.js" ] && cp "$ROOT_DIR/pdf.min.js" "$ASSETS_DIR/pdf.min.js"
-          [ -f "$ROOT_DIR/pdf.worker.min.js" ] && cp "$ROOT_DIR/pdf.worker.min.js" "$ASSETS_DIR/pdf.worker.min.js"
+          # ضبط ملفات الموارد إذا وُجدت في الجذر
+          [ -f "colors.xml" ] && cp "colors.xml" "app/src/main/res/values/colors.xml"
+          [ -f "ic_fg.xml" ] && cp "ic_fg.xml" "app/src/main/res/drawable/ic_fg.xml" || true
+          [ -f "ic_launcher.xml" ] && cp "ic_launcher.xml" "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" || true
+
+          # كتابة settings.gradle و build.gradle الجذري و app/build.gradle بشكل صحيح
+          cat << 'EOF' > settings.gradle
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "MudeerCards"
+          include ':app'
+          EOF
+
+          cat << 'EOF' > build.gradle
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          EOF
+
+          cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.example.mudeercards'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.example.mudeercards"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.7.0'
+          }
+          EOF
+
+          cat << 'EOF' > gradle.properties
+          org.gradle.jvmargs=-Xmx2g
+          android.useAndroidX=true
+          EOF
 
       - name: Build APK
-        working-directory: ${{ github.workspace }}
         run: |
-          GW_PATH=$(find . -maxdepth 3 -name "gradlew" -type f | head -n 1)
-          if [ -n "$GW_PATH" ]; then
-            GW_DIR=$(dirname "$GW_PATH")
-            chmod +x "$GW_PATH"
-            (cd "$GW_DIR" && ./gradlew assembleDebug)
-          else
-            gradle assembleDebug
+          if [ ! -f "./gradlew" ]; then
+            gradle wrapper --gradle-version 8.7
           fi
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: "**/build/outputs/apk/debug/*.apk"
+          path: app/build/outputs/apk/debug/*.apk
  
