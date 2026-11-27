@@ -1,33 +1,51 @@
 name: Build APK
-on: [push, workflow_dispatch]
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: 17 }
-      - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: 8.9 }
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+
       - name: Assemble project
         run: |
-          S=proj/app/src/main
-          mkdir -p $S/assets $S/java/com/mudeer/cards $S/res/values $S/res/drawable $S/res/mipmap-anydpi
-          cp AndroidManifest.xml $S/
-          cp MainActivity.java $S/java/com/mudeer/cards/
-          cp index.html $S/assets/
-          cp colors.xml $S/res/values/
-          cp ic_fg.xml $S/res/drawable/
-          cp ic_launcher.xml $S/res/mipmap-anydpi/
-          printf '%s\n' "pluginManagement {" "  repositories {" "    google()" "    mavenCentral()" "    gradlePluginPortal()" "  }" "}" "dependencyResolutionManagement {" "  repositories {" "    google()" "    mavenCentral()" "  }" "}" "rootProject.name = 'MudeerCards'" "include ':app'" > proj/settings.gradle
-          printf '%s\n' "plugins {" "  id 'com.android.application' version '8.5.2' apply false" "}" > proj/build.gradle
-          printf '%s\n' "org.gradle.jvmargs=-Xmx2g" "android.useAndroidX=false" > proj/gradle.properties
-          printf '%s\n' "plugins {" "  id 'com.android.application'" "}" "" "android {" "  namespace 'com.mudeer.cards'" "  compileSdk 34" "  defaultConfig {" "    applicationId 'com.mudeer.cards'" "    minSdk 29" "    targetSdk 34" "    versionCode 1" "    versionName '1.0'" "  }" "  compileOptions {" "    sourceCompatibility JavaVersion.VERSION_17" "    targetCompatibility JavaVersion.VERSION_17" "  }" "}" > proj/app/build.gradle
-          cat -A proj/app/build.gradle
-      - name: Build
-        working-directory: proj
-        run: gradle assembleDebug
-      - uses: actions/upload-artifact@v4
+          ROOT_DIR="$PWD"
+          ASSETS_DIR="$ROOT_DIR/app/src/main/assets"
+          mkdir -p "$ASSETS_DIR"
+
+          if [ -f "$ROOT_DIR/index.html" ]; then
+            cp "$ROOT_DIR/index.html" "$ASSETS_DIR/index.html"
+          elif [ -f "$ROOT_DIR/app/src/main/index.html" ]; then
+            cp "$ROOT_DIR/app/src/main/index.html" "$ASSETS_DIR/index.html"
+          else
+            echo "Error: index.html not found!"
+            exit 1
+          fi
+
+          [ -f "$ROOT_DIR/pdf.min.js" ] && cp "$ROOT_DIR/pdf.min.js" "$ASSETS_DIR/pdf.min.js"
+          [ -f "$ROOT_DIR/pdf.worker.min.js" ] && cp "$ROOT_DIR/pdf.worker.min.js" "$ASSETS_DIR/pdf.worker.min.js"
+
+      - name: Build APK
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: kuroot-apk
-          path: proj/app/build/outputs/apk/debug/app-debug.apk
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
+          
