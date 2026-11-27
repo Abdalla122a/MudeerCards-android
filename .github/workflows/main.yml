@@ -1,8 +1,8 @@
-
 name: Build APK
 
 on:
   push:
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -16,94 +16,36 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: 'temurin'
+          java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.9
+        uses: gradle/gradle-build-action@v3
 
       - name: Assemble project
         run: |
-          S=proj/app/src/main
+          ROOT_DIR="$PWD"
+          ASSETS_DIR="$ROOT_DIR/app/src/main/assets"
+          mkdir -p "$ASSETS_DIR"
 
-          mkdir -p "$S/assets"
-          mkdir -p "$S/java/com/mudeer/cards"
-          mkdir -p "$S/res/values"
-          mkdir -p "$S/res/drawable"
-          mkdir -p "$S/res/mipmap-anydpi"
+          if [ -f "$ROOT_DIR/index.html" ]; then
+            cp "$ROOT_DIR/index.html" "$ASSETS_DIR/index.html"
+          elif [ -f "$ROOT_DIR/app/src/main/index.html" ]; then
+            cp "$ROOT_DIR/app/src/main/index.html" "$ASSETS_DIR/index.html"
+          else
+            echo "Error: index.html not found!"
+            exit 1
+          fi
 
-          cp AndroidManifest.xml "$S/"
-          cp MainActivity.java "$S/java/com/mudeer/cards/"
-
-          cp "index(1).html" "$S/assets/index.html"
-
-          cp pdf.min.js "$S/assets/"
-          cp pdf.worker.min.js "$S/assets/"
-
-          cp colors.xml "$S/res/values/"
-          cp ic_fg.xml "$S/res/drawable/"
-          cp ic_launcher.xml "$S/res/mipmap-anydpi/"
-
-          printf '%s\n' \
-            "pluginManagement {" \
-            "  repositories {" \
-            "    google()" \
-            "    mavenCentral()" \
-            "    gradlePluginPortal()" \
-            "  }" \
-            "}" \
-            "dependencyResolutionManagement {" \
-            "  repositories {" \
-            "    google()" \
-            "    mavenCentral()" \
-            "  }" \
-            "}" \
-            "rootProject.name = 'MudeerCards'" \
-            "include ':app'" > proj/settings.gradle
-
-          printf '%s\n' \
-            "plugins {" \
-            "  id 'com.android.application' version '8.5.2' apply false" \
-            "}" > proj/build.gradle
-
-          printf '%s\n' \
-            "org.gradle.jvmargs=-Xmx2g" \
-            "android.useAndroidX=false" > proj/gradle.properties
-
-          printf '%s\n' \
-            "plugins {" \
-            "  id 'com.android.application'" \
-            "}" \
-            "" \
-            "android {" \
-            "  namespace 'com.mudeer.cards'" \
-            "  compileSdk 34" \
-            "  defaultConfig {" \
-            "    applicationId 'com.mudeer.cards'" \
-            "    minSdk 29" \
-            "    targetSdk 34" \
-            "    versionCode 1" \
-            "    versionName '1.0'" \
-            "  }" \
-            "  compileOptions {" \
-            "    sourceCompatibility JavaVersion.VERSION_17" \
-            "    targetCompatibility JavaVersion.VERSION_17" \
-            "  }" \
-            "}" > proj/app/build.gradle
-
-          echo "Checking application files..."
-          ls -l "$S/assets/"
+          [ -f "$ROOT_DIR/pdf.min.js" ] && cp "$ROOT_DIR/pdf.min.js" "$ASSETS_DIR/pdf.min.js"
+          [ -f "$ROOT_DIR/pdf.worker.min.js" ] && cp "$ROOT_DIR/pdf.worker.min.js" "$ASSETS_DIR/pdf.worker.min.js"
 
       - name: Build APK
-        working-directory: proj
-        run: gradle assembleDebug
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Mudeer-Cards-APK
-          path: proj/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
           
