@@ -1,33 +1,109 @@
+
 name: Build APK
-on: [push, workflow_dispatch]
+
+on:
+  push:
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: 17 }
-      - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: 8.9 }
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
       - name: Assemble project
         run: |
           S=proj/app/src/main
-          mkdir -p $S/assets $S/java/com/mudeer/cards $S/res/values $S/res/drawable $S/res/mipmap-anydpi
-          cp AndroidManifest.xml $S/
-          cp MainActivity.java $S/java/com/mudeer/cards/
-          cp index.html $S/assets/
-          cp colors.xml $S/res/values/
-          cp ic_fg.xml $S/res/drawable/
-          cp ic_launcher.xml $S/res/mipmap-anydpi/
-          printf '%s\n' "pluginManagement {" "  repositories {" "    google()" "    mavenCentral()" "    gradlePluginPortal()" "  }" "}" "dependencyResolutionManagement {" "  repositories {" "    google()" "    mavenCentral()" "  }" "}" "rootProject.name = 'MudeerCards'" "include ':app'" > proj/settings.gradle
-          printf '%s\n' "plugins {" "  id 'com.android.application' version '8.5.2' apply false" "}" > proj/build.gradle
-          printf '%s\n' "org.gradle.jvmargs=-Xmx2g" "android.useAndroidX=false" > proj/gradle.properties
-          printf '%s\n' "plugins {" "  id 'com.android.application'" "}" "" "android {" "  namespace 'com.mudeer.cards'" "  compileSdk 34" "  defaultConfig {" "    applicationId 'com.mudeer.cards'" "    minSdk 29" "    targetSdk 34" "    versionCode 1" "    versionName '1.0'" "  }" "  compileOptions {" "    sourceCompatibility JavaVersion.VERSION_17" "    targetCompatibility JavaVersion.VERSION_17" "  }" "}" > proj/app/build.gradle
-          cat -A proj/app/build.gradle
-      - name: Build
+
+          mkdir -p "$S/assets"
+          mkdir -p "$S/java/com/mudeer/cards"
+          mkdir -p "$S/res/values"
+          mkdir -p "$S/res/drawable"
+          mkdir -p "$S/res/mipmap-anydpi"
+
+          cp AndroidManifest.xml "$S/"
+          cp MainActivity.java "$S/java/com/mudeer/cards/"
+
+          cp "index(1).html" "$S/assets/index.html"
+
+          cp pdf.min.js "$S/assets/"
+          cp pdf.worker.min.js "$S/assets/"
+
+          cp colors.xml "$S/res/values/"
+          cp ic_fg.xml "$S/res/drawable/"
+          cp ic_launcher.xml "$S/res/mipmap-anydpi/"
+
+          printf '%s\n' \
+            "pluginManagement {" \
+            "  repositories {" \
+            "    google()" \
+            "    mavenCentral()" \
+            "    gradlePluginPortal()" \
+            "  }" \
+            "}" \
+            "dependencyResolutionManagement {" \
+            "  repositories {" \
+            "    google()" \
+            "    mavenCentral()" \
+            "  }" \
+            "}" \
+            "rootProject.name = 'MudeerCards'" \
+            "include ':app'" > proj/settings.gradle
+
+          printf '%s\n' \
+            "plugins {" \
+            "  id 'com.android.application' version '8.5.2' apply false" \
+            "}" > proj/build.gradle
+
+          printf '%s\n' \
+            "org.gradle.jvmargs=-Xmx2g" \
+            "android.useAndroidX=false" > proj/gradle.properties
+
+          printf '%s\n' \
+            "plugins {" \
+            "  id 'com.android.application'" \
+            "}" \
+            "" \
+            "android {" \
+            "  namespace 'com.mudeer.cards'" \
+            "  compileSdk 34" \
+            "  defaultConfig {" \
+            "    applicationId 'com.mudeer.cards'" \
+            "    minSdk 29" \
+            "    targetSdk 34" \
+            "    versionCode 1" \
+            "    versionName '1.0'" \
+            "  }" \
+            "  compileOptions {" \
+            "    sourceCompatibility JavaVersion.VERSION_17" \
+            "    targetCompatibility JavaVersion.VERSION_17" \
+            "  }" \
+            "}" > proj/app/build.gradle
+
+          echo "Checking application files..."
+          ls -l "$S/assets/"
+
+      - name: Build APK
         working-directory: proj
         run: gradle assembleDebug
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: kuroot-apk
+          name: Mudeer-Cards-APK
           path: proj/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          
