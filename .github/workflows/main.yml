@@ -24,7 +24,7 @@ jobs:
 
       - name: Assemble project
         run: |
-          ROOT_DIR="$PWD"
+          ROOT_DIR="$GITHUB_WORKSPACE"
           ASSETS_DIR="$ROOT_DIR/app/src/main/assets"
           mkdir -p "$ASSETS_DIR"
 
@@ -41,11 +41,20 @@ jobs:
           [ -f "$ROOT_DIR/pdf.worker.min.js" ] && cp "$ROOT_DIR/pdf.worker.min.js" "$ASSETS_DIR/pdf.worker.min.js"
 
       - name: Build APK
-        run: ./gradlew assembleDebug
+        working-directory: ${{ github.workspace }}
+        run: |
+          GW_PATH=$(find . -maxdepth 3 -name "gradlew" -type f | head -n 1)
+          if [ -n "$GW_PATH" ]; then
+            GW_DIR=$(dirname "$GW_PATH")
+            chmod +x "$GW_PATH"
+            (cd "$GW_DIR" && ./gradlew assembleDebug)
+          else
+            gradle assembleDebug
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: app/build/outputs/apk/debug/*.apk
-      
+          path: "**/build/outputs/apk/debug/*.apk"
+          
